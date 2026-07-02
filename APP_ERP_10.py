@@ -73,4 +73,70 @@ else:
     # MÓDULO 2: GPS GLOBAL
     with tab2:
         st.subheader("Radar Satelital de Flota Completa")
-        st.write("El mapa muestra la ubicación en tiempo real)
+        st.write("El mapa muestra la ubicación en tiempo real de los 10 camiones Actros.")
+        coords = [{"lat": c["lat"], "lon": c["lon"]} for c in st.session_state.flota]
+        df_mapa = pd.DataFrame(coords)
+        st.map(df_mapa, zoom=11)
+        if st.button("Simular Movimiento de Toda la Flota 🔄", use_container_width=True):
+            for c in st.session_state.flota:
+                c["kms"] += random.randint(2, 10)
+                c["lat"] += random.uniform(-0.002, 0.002)
+                c["lon"] += random.uniform(-0.002, 0.002)
+            st.rerun()
+
+    # MÓDULO 3: COMBUSTIBLE
+    with tab3:
+        st.subheader(f"Carga de Diésel - {camion_actual['patente']}")
+        litros = st.number_input("Litros Cargados", min_value=0, step=10, key="litros")
+        costo = st.number_input("Costo Total ($)", min_value=0, step=5000, key="costo")
+        if st.button("Guardar Registro", type="primary", use_container_width=True):
+            if litros > 0 and costo > 0:
+                nuevo_reg = {
+                    "Fecha": str(datetime.date.today()),
+                    "Litros": f"{litros} L",
+                    "Costo": f"${costo:,}",
+                    "Rendimiento": f"{round(random.uniform(1.1, 1.4), 1)} Km/L",
+                    "Operador": st.session_state.usuario
+                }
+                camion_actual["db_comb"].append(nuevo_reg)
+                st.success(f"Guardado exitosamente para el {camion_actual['id']}.")
+        
+        st.write("**Historial de Cargas de este equipo:**")
+        if len(camion_actual["db_comb"]) > 0:
+            st.dataframe(pd.DataFrame(camion_actual["db_comb"]), use_container_width=True)
+        else:
+            st.write("No hay registros de carga para este camión aún.")
+
+    # MÓDULO 4: CHECKLIST
+    with tab4:
+        st.subheader("Inspección Pre-Uso")
+        st.write(f"Evaluando: **{camion_actual['patente']}**")
+        f1 = st.checkbox("Frenos y Sistema Neumático (Campanas, balatas)", key="f1")
+        f2 = st.checkbox("Chasis, Grapas y Suspensión Parabólica", key="f2")
+        f3 = st.checkbox("Niveles de Motor (Aceite, O-Rings)", key="f3")
+        f4 = st.checkbox("Sistema Hidráulico (Pistón de tolva)", key="f4")
+        f5 = st.checkbox("Neumáticos y Tuercas", key="f5")
+        if st.button("Enviar Evaluación", type="primary", use_container_width=True):
+            if any([f1, f2, f3, f4, f5]):
+                camion_actual['estado'] = "BLOQUEADO"
+                st.error("🚨 FALLA CRÍTICA DETECTADA: Vehículo bloqueado.")
+            else:
+                camion_actual['estado'] = "OPERATIVO"
+                st.success("✅ Aprobado: Vehículo autorizado para operar.")
+
+    # MÓDULO 5: CRITICIDAD
+    with tab5:
+        st.subheader("Matriz Kaufmann (FxF)")
+        datos_crit = [
+            {"Sistema": "Frenos", "F": 4, "I": 5, "Total": 20, "Riesgo": "🔴 CRÍTICO"},
+            {"Sistema": "Chasis", "F": 4, "I": 4, "Total": 16, "Riesgo": "🔴 CRÍTICO"},
+            {"Sistema": "Hidráulico", "F": 3, "I": 5, "Total": 15, "Riesgo": "🔴 CRÍTICO"},
+            {"Sistema": "Motor", "F": 3, "I": 4, "Total": 12, "Riesgo": "🟡 MEDIO"},
+            {"Sistema": "Eléctrico", "F": 2, "I": 3, "Total": 6, "Riesgo": "🟢 BAJO"}
+        ]
+        st.dataframe(pd.DataFrame(datos_crit), use_container_width=True)
+        
+    st.divider()
+    if st.button("Cerrar Sesión Segura", use_container_width=True):
+        st.session_state.conectado = False
+        st.rerun()
