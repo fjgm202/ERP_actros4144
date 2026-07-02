@@ -73,4 +73,4 @@ else:
     # MÓDULO 2: GPS GLOBAL
     with tab2:
         st.subheader("Radar Satelital de Flota Completa")
-        st.write("El mapa muestra la ubicación en tiempo real
+        st.write("El mapa muestra la ubicación en tiempo real)
