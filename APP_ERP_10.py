@@ -13,7 +13,6 @@ if 'conectado' not in st.session_state:
 
 if 'flota' not in st.session_state:
     flota_inicial = []
-    # Coordenadas base en Temuco/Maquehue
     lat_base = -38.7396
     lon_base = -72.6019
     
@@ -23,7 +22,7 @@ if 'flota' not in st.session_state:
             "patente": f"GP-GC-{89+i}",
             "kms": random.randint(500000, 580000),
             "horas": random.randint(18000, 22000),
-            "lat": lat_base + random.uniform(-0.06, 0.06), # Posiciones esparcidas
+            "lat": lat_base + random.uniform(-0.06, 0.06),
             "lon": lon_base + random.uniform(-0.06, 0.06),
             "estado": "OPERATIVO",
             "db_comb": []
@@ -51,16 +50,12 @@ if not st.session_state.conectado:
 else:
     st.success(f"🌐 Conectado | Operador: {st.session_state.usuario} | Flota Total: 10 Equipos")
     
-    # Selector de Camión
     nombres_camiones = [f"{c['id']} (Patente: {c['patente']})" for c in st.session_state.flota]
     camion_idx = st.selectbox("Seleccione Vehículo para Auditoría:", range(10), format_func=lambda x: nombres_camiones[x])
-    
-    # Obtener los datos del camión seleccionado
     camion_actual = st.session_state.flota[camion_idx]
     
     st.header(f"🚛 {camion_actual['id']}")
     
-    # Pestañas
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏠 Dash", "📍 GPS Flota", "⛽ Comb", "📋 Check", "📊 Matriz"])
     
     # MÓDULO 1: DASHBOARD
@@ -69,3 +64,13 @@ else:
         col1, col2 = st.columns(2)
         col1.metric("Odómetro CAN-Bus", f"{camion_actual['kms']:,} Km")
         col2.metric("Horómetro Motor", f"{camion_actual['horas']:,} Hrs")
+        
+        if camion_actual['estado'] == "OPERATIVO":
+            st.info("🟢 ESTADO: OPERATIVO Y AUTORIZADO")
+        else:
+            st.error("🔴 ESTADO: BLOQUEADO POR FALLA CRÍTICA")
+
+    # MÓDULO 2: GPS GLOBAL
+    with tab2:
+        st.subheader("Radar Satelital de Flota Completa")
+        st.write("El mapa muestra la ubicación en tiempo real
