@@ -68,4 +68,4 @@ else:
         st.subheader("Resumen de Operación")
         col1, col2 = st.columns(2)
         col1.metric("Odómetro CAN-Bus", f"{camion_actual['kms']:,} Km")
-        col2.metric("Horómetro Motor", f"{camion_actual['horas']
+        col2.metric("Horómetro Motor", f"{camion_actual['horas']:,} Hrs")
