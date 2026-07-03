@@ -18,7 +18,6 @@ if 'flota' not in st.session_state:
     
     for i in range(1, 11):
         kms_actuales = random.randint(500000, 580000)
-        # Calcular cuándo le toca la próxima mantención de 10,000 Km
         proxima_maint = ((kms_actuales // 10000) + 1) * 10000
         kms_restantes = proxima_maint - kms_actuales
         
@@ -67,31 +66,28 @@ if not st.session_state.conectado:
 else:
     st.write(f"🟢 **Servidor Activo** | Supervisor: `{st.session_state.usuario}`")
     
-    # Selector de Unidades
     lista_desplegable = [f"{c['id']} [Patente: {c['patente']}]" for c in st.session_state.flota]
     camion_idx = st.selectbox("Seleccionar Camión Actros para Auditoría:", range(10), format_func=lambda x: lista_desplegable[x])
     camion_sel = st.session_state.flota[camion_idx]
     
     st.header(f"🚛 {camion_sel['id']} - Mod. {camion_sel['modelo']}")
     
-    # Estructura de navegación solicitada por el Profesor
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🏠 Panel", 
         "📍 GPS y Rutas", 
         "📋 Checklist Diario", 
         "🛠️ Órdenes Taller", 
-        "⛽ Combustible",
+        "⛽ Comb",
         "📊 Informes"
     ])
     
-    # 1. TAB PANEL (MÓDULO DE ALERTAS DE MANTENCIÓN PERIÓDICA)
+    # 1. TAB PANEL
     with tab1:
         st.subheader("Telemetría del Motor y Alertas")
         col1, col2 = st.columns(2)
         col1.metric("Odómetro CAN-Bus", f"{camion_sel['kms']:,} Km")
         col2.metric("Horómetro de Trabajo", f"{camion_sel['horas']:,} Hrs")
         
-        # Lógica de Alertas Periódicas Automáticas
         st.markdown("### ⏰ Alertas de Mantención Periódica")
         restantes = camion_sel['kms_para_mantencion']
         
@@ -100,18 +96,16 @@ else:
         elif restantes < 1000:
             st.warning(f"⚠️ ALERTA PREVENTIVA: Próximo Cambio de Aceite y Filtros en {restantes} Km. Agendar taller.")
         else:
-            st.success(f"✅ Motor Estable: Faltan {restantes:,} Km para la pauta de mantención periódica estándar (Cada 10k Km).")
+            st.success(f"✅ Motor Estable: Faltan {restantes:,} Km para la pauta de mantención periódica estándar.")
             
         if camion_sel['estado'] == "OPERATIVO":
             st.info("🟢 Estado Operativo: LIBRE DE RESTRICCIONES EN RUTA")
         else:
             st.error("🔴 Estado Operativo: RESTRINGUIDO - BLOQUEADO EN TALLER")
 
-    # 2. TAB GPS Y RUTAS (MÓDULO DE INFORMES DE RUTAS)
+    # 2. TAB GPS Y RUTAS
     with tab2:
         st.subheader("📍 Georreferenciación e Informe de Rutas")
-        
-        # Mapa global de los 10 puntos
         coords_flota = [{"lat": c["lat"], "lon": c["lon"]} for c in st.session_state.flota]
         st.map(pd.DataFrame(coords_flota), zoom=10)
         
@@ -126,7 +120,7 @@ else:
             camion_sel['lon'] += random.uniform(-0.005, 0.005)
             st.rerun()
 
-    # 3. TAB CHECKLIST (INSPECCIÓN DIARIA DE CONTROL PRE-USO)
+    # 3. TAB CHECKLIST (CON COMENTARIOS)
     with tab3:
         st.subheader("📋 Checklist Diario de Control de Seguridad")
         st.write("El conductor debe declarar el estado de los componentes antes de salir de faena.")
@@ -139,16 +133,23 @@ else:
         chk_hidraulico = st.checkbox("Sistema Hidráulico de Tolva (Sin fugas) OK", value=True, key="c4")
         chk_luces = st.checkbox("Luces, Cinturón y Alarmas de retroceso OK", value=True, key="c5")
         
+        # NUEVO: Cuadro para comentarios solicitados por el profesor
+        st.markdown("---")
+        comentarios_conductor = st.text_area("📝 Comentarios / Observaciones Adicionales:", placeholder="Indique aquí cualquier detalle visual, ruido anormal o solicitud menor...")
+        
         if st.button("Enviar Registro de Inspección", type="primary", use_container_width=True):
-            # Si falta marcar un checklist como BUENO, hay falla crítica
             if not all([chk_frenos, chk_direccion, chk_neumaticos, chk_hidraulico, chk_luces]):
                 camion_sel['estado'] = "BLOQUEADO"
-                st.error("🚨 INSPECCIÓN RECHAZADA: Se han detectado fallas operativas. El camión ha sido bloqueado en el ERP central. Proceda a generar una Orden de Taller.")
+                st.error("🚨 INSPECCIÓN RECHAZADA: Se han detectado fallas operativas. El camión ha sido bloqueado en el ERP central.")
+                if comentarios_conductor:
+                    st.warning(f"📌 **Nota del conductor:** {comentarios_conductor}")
             else:
                 camion_sel['estado'] = "OPERATIVO"
                 st.success("✅ INSPECCIÓN APROBADA: Unidad en perfectas condiciones mecánicas para transitar.")
+                if comentarios_conductor:
+                    st.info(f"📌 **Nota del conductor:** {comentarios_conductor}")
 
-    # 4. TAB ÓRDENES DE TALLER (GENERADOR DE ORDENES DE TRABAJO - OT)
+    # 4. TAB ÓRDENES DE TALLER
     with tab4:
         st.subheader("🛠️ Panel de Gestión: Órdenes de Taller")
         
@@ -178,12 +179,12 @@ else:
                 for ot in camion_sel['db_ot']:
                     ot["Estado"] = "Cerrada"
                 camion_sel['estado'] = "OPERATIVO"
-                camion_sel['kms_para_mantencion'] = 10000 # Resetea la alerta de mantención periódica
+                camion_sel['kms_para_mantencion'] = 10000
                 st.success("Unidad reparada con éxito. Estado actualizado a OPERATIVO.")
         else:
             st.write("No registra órdenes de reparación históricas.")
 
-    # 5. TAB COMBUSTIBLE (GENERADOR DE DATOS DE CONSUMO)
+    # 5. TAB COMBUSTIBLE
     with tab5:
         st.subheader("⛽ Módulo de Control de Abastecimiento de Diésel")
         litros = st.number_input("Cantidad de Litros Cargados:", min_value=0, step=20)
@@ -202,7 +203,7 @@ else:
                 
         st.dataframe(pd.DataFrame(camion_sel['db_comb']), use_container_width=True)
 
-    # 6. TAB INFORMES (INFORMES DE MANTENCIÓN CONSOLIDADOS)
+    # 6. TAB INFORMES
     with tab6:
         st.subheader("📊 Informe Ejecutivo de Mantenimiento de Flota")
         st.write("Datos analíticos consolidados generados dinámicamente para la jefatura:")
@@ -215,8 +216,8 @@ else:
         st.markdown(f"""
         - **Indicador Técnico de la Unidad:** El equipo `{camion_sel['id']}` registra un kilometraje acumulado de **{camion_sel['kms']:,} Km**.
         - **Estado Físico Actual:** Actualmente la unidad se encuentra clasificada como **{camion_sel['estado']}**.
-        - **Mantenibilidad Periódica:** Al vehículo le restan **{camion_sel['kms_para_mantencion']:,} Km** para cumplir su próximo ciclo de mantenimiento preventivo crítico.
-        - **Logística Operativa:** El camión registra un total de **{len(camion_sel['rutas'])} rutas controladas por GPS** en el presente ciclo operativo diario.
+        - **Mantenibilidad Periódica:** Al vehículo le restan **{camion_sel['kms_para_mantencion']:,} Km** para cumplir su próximo ciclo de mantenimiento preventivo.
+        - **Logística Operativa:** El camión registra un total de **{len(camion_sel['rutas'])} rutas controladas por GPS**.
         """)
         
         st.button("📥 Descargar Informe Completo en PDF (Simulado)", use_container_width=True)
